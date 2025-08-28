@@ -19,6 +19,10 @@ Environment variables consumed by the app (see src/core/config.py):
 - CORS_ALLOW_CREDENTIALS: true|false (default true).
 - CORS_ALLOW_METHODS: Allowed methods (comma-separated, default "*").
 - CORS_ALLOW_HEADERS: Allowed headers (comma-separated, default "*").
+- PERPLEXITY_API_KEY: API key for Perplexity (backend-only; never exposed to frontend).
+- PERPLEXITY_MODEL (optional): Default model name (default "sonar").
+- PERPLEXITY_MAX_TOKENS (optional): Default max tokens (default 512).
+- PERPLEXITY_TEMPERATURE (optional): Default sampling temperature (default 0.2).
 
 Note: Environment variables are loaded via python-dotenv when a .env file is present.
 
@@ -34,6 +38,18 @@ Alternatively:
    cd recipe_backend && uvicorn src.api.main:app --reload
 
 OpenAPI docs: /docs
+
+### New: Chatbot endpoint (Perplexity proxy)
+- Path: POST /chatbot
+- Body:
+  {
+    "messages": [{"role": "user", "content": "Suggest a dinner recipe with salmon"}],
+    "model": "sonar"          // optional
+    "max_tokens": 400,        // optional
+    "temperature": 0.2        // optional
+  }
+- Returns: A standardized response with choices[].message.content from Perplexity.
+- Security: The PERPLEXITY_API_KEY is stored on the backend and never exposed to clients.
 
 ### Database setup and migrations
 The project uses SQLAlchemy ORM, and tables are created automatically on app startup via:
@@ -69,10 +85,12 @@ Set environment variables securely (do not hard-code secrets):
   export DATABASE_URL="postgresql+psycopg2://user:pass@db-host:5432/recipehub"
 - CORS_ALLOW_ORIGINS: Restrict to your frontend origins. Example:
   export CORS_ALLOW_ORIGINS="https://www.myrecipehub.com,https://app.myrecipehub.com"
+- PERPLEXITY_API_KEY: Required to enable the /chatbot endpoint.
 
 Optionally adjust:
 - ACCESS_TOKEN_EXPIRE_MINUTES (default 60)
 - CORS_ALLOW_METHODS / CORS_ALLOW_HEADERS / CORS_ALLOW_CREDENTIALS
+- PERPLEXITY_MODEL / PERPLEXITY_MAX_TOKENS / PERPLEXITY_TEMPERATURE
 
 #### 2) Install dependencies
 From the repository root (or inside recipe_backend):

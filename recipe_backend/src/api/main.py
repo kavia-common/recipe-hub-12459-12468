@@ -7,6 +7,7 @@ from src.core.db import engine, Base
 from src.core.db import get_db
 from src.api.auth import router as auth_router
 from src.api.recipes import router as recipes_router
+from src.api.chatbot import router as chatbot_router
 
 settings = get_settings()
 
@@ -22,6 +23,7 @@ app = FastAPI(
         {"name": "Authentication", "description": "User registration, login, and profile"},
         {"name": "Recipes", "description": "Browse, search, create, edit, and delete recipes"},
         {"name": "Favorites", "description": "Mark recipes as favorites and list favorites"},
+        {"name": "Chatbot", "description": "Chatbot proxy for Perplexity API"},
     ],
 )
 
@@ -36,6 +38,7 @@ app.add_middleware(
 # Register routers
 app.include_router(auth_router)
 app.include_router(recipes_router)
+app.include_router(chatbot_router)
 
 
 @app.get(
