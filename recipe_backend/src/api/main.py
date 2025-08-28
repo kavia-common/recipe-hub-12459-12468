@@ -6,6 +6,7 @@ from src.core.config import get_settings
 from src.core.db import engine, Base
 from src.core.db import get_db
 from src.api.auth import router as auth_router
+from src.api.recipes import router as recipes_router
 
 settings = get_settings()
 
@@ -19,6 +20,7 @@ app = FastAPI(
     openapi_tags=[
         {"name": "Health", "description": "Health and diagnostics"},
         {"name": "Authentication", "description": "User registration, login, and profile"},
+        {"name": "Recipes", "description": "Browse, search, create, edit, and delete recipes"},
     ],
 )
 
@@ -32,6 +34,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(recipes_router)
 
 
 @app.get(
