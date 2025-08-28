@@ -187,6 +187,7 @@ def delete_recipe(
     status_code=status.HTTP_201_CREATED,
     summary="Mark recipe as favorite",
     description="Mark the specified recipe as a favorite for the authenticated user. Idempotent: returns existing favorite if already favorited.",
+    tags=["Recipes", "Favorites"],
     responses={
         201: {"description": "Marked as favorite"},
         200: {"description": "Already a favorite, returning existing favorite"},
@@ -238,6 +239,7 @@ def favorite_recipe(
     response_model=MessageResponse,
     summary="Unmark recipe as favorite",
     description="Remove the favorite mark for the specified recipe for the authenticated user. Idempotent: succeeds even if not currently favorited.",
+    tags=["Recipes", "Favorites"],
     responses={
         200: {"description": "Unfavorited (or was not favorited)"},
         401: {"description": "Not authenticated", "model": MessageResponse},
@@ -273,6 +275,7 @@ def unfavorite_recipe(
     response_model=List[RecipeRead],
     summary="List my favorite recipes",
     description="Return a list of recipes the authenticated user has favorited.",
+    tags=["Recipes", "Favorites"],
     responses={
         200: {"description": "List returned"},
         401: {"description": "Not authenticated", "model": MessageResponse},
@@ -301,6 +304,7 @@ def list_my_favorites(
     response_model=List[FavoriteRead],
     summary="List favorites for a recipe",
     description="Return list of Favorite records (user_id and metadata) for users who favorited the recipe.",
+    tags=["Recipes", "Favorites"],
     responses={
         200: {"description": "List returned"},
         404: {"description": "Recipe not found", "model": MessageResponse},
