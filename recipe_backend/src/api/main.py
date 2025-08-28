@@ -5,6 +5,7 @@ from fastapi import Depends
 from src.core.config import get_settings
 from src.core.db import engine, Base
 from src.core.db import get_db
+from src.api.auth import router as auth_router
 
 settings = get_settings()
 
@@ -17,6 +18,7 @@ app = FastAPI(
     description=settings.APP_DESCRIPTION,
     openapi_tags=[
         {"name": "Health", "description": "Health and diagnostics"},
+        {"name": "Authentication", "description": "User registration, login, and profile"},
     ],
 )
 
@@ -27,6 +29,9 @@ app.add_middleware(
     allow_methods=settings.CORS_ALLOW_METHODS,
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
+
+# Register routers
+app.include_router(auth_router)
 
 
 @app.get(
