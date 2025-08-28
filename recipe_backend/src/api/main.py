@@ -21,6 +21,7 @@ app = FastAPI(
         {"name": "Health", "description": "Health and diagnostics"},
         {"name": "Authentication", "description": "User registration, login, and profile"},
         {"name": "Recipes", "description": "Browse, search, create, edit, and delete recipes"},
+        {"name": "Favorites", "description": "Mark recipes as favorites and list favorites"},
     ],
 )
 

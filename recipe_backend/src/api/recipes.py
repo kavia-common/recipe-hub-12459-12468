@@ -4,15 +4,16 @@ from typing import Annotated, Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, exc
 
 from src.core.db import get_db
-from src.models.models import Recipe, User
+from src.models.models import Recipe, User, Favorite
 from src.schemas.schemas import (
     RecipeCreate,
     RecipeRead,
     RecipeUpdate,
     MessageResponse,
+    FavoriteRead,
 )
 from src.api.auth import get_current_user
 
@@ -178,3 +179,140 @@ def delete_recipe(
     db.delete(recipe)
     db.commit()
     return MessageResponse(message="Recipe deleted successfully")
+
+
+@router.post(
+    "/{recipe_id}/favorite",
+    response_model=FavoriteRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Mark recipe as favorite",
+    description="Mark the specified recipe as a favorite for the authenticated user. Idempotent: returns existing favorite if already favorited.",
+    responses={
+        201: {"description": "Marked as favorite"},
+        200: {"description": "Already a favorite, returning existing favorite"},
+        401: {"description": "Not authenticated", "model": MessageResponse},
+        404: {"description": "Recipe not found", "model": MessageResponse},
+    },
+)
+def favorite_recipe(
+    recipe_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Create or return a Favorite record for the current user and the given recipe."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+
+    # Check existing favorite to keep idempotency
+    existing = (
+        db.query(Favorite)
+        .filter(and_(Favorite.user_id == current_user.id, Favorite.recipe_id == recipe_id))
+        .first()
+    )
+    if existing:
+        # Return 200 OK with existing favorite
+        return existing
+
+    favorite = Favorite(user_id=current_user.id, recipe_id=recipe_id)
+    db.add(favorite)
+    try:
+        db.commit()
+    except exc.IntegrityError:
+        # In rare race conditions, the unique constraint might trigger
+        db.rollback()
+        existing = (
+            db.query(Favorite)
+            .filter(and_(Favorite.user_id == current_user.id, Favorite.recipe_id == recipe_id))
+            .first()
+        )
+        if existing:
+            return existing
+        raise
+    db.refresh(favorite)
+    return favorite
+
+
+@router.delete(
+    "/{recipe_id}/favorite",
+    response_model=MessageResponse,
+    summary="Unmark recipe as favorite",
+    description="Remove the favorite mark for the specified recipe for the authenticated user. Idempotent: succeeds even if not currently favorited.",
+    responses={
+        200: {"description": "Unfavorited (or was not favorited)"},
+        401: {"description": "Not authenticated", "model": MessageResponse},
+        404: {"description": "Recipe not found", "model": MessageResponse},
+    },
+)
+def unfavorite_recipe(
+    recipe_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Delete the Favorite record if it exists for the user and recipe."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+
+    fav = (
+        db.query(Favorite)
+        .filter(and_(Favorite.user_id == current_user.id, Favorite.recipe_id == recipe_id))
+        .first()
+    )
+    if fav:
+        db.delete(fav)
+        db.commit()
+    else:
+        # No-op for idempotency
+        pass
+    return MessageResponse(message="Recipe unfavorited")
+
+
+@router.get(
+    "/favorites/me",
+    response_model=List[RecipeRead],
+    summary="List my favorite recipes",
+    description="Return a list of recipes the authenticated user has favorited.",
+    responses={
+        200: {"description": "List returned"},
+        401: {"description": "Not authenticated", "model": MessageResponse},
+    },
+)
+def list_my_favorites(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(20, ge=1, le=100, description="Max records to return"),
+):
+    """List the current user's favorited recipes."""
+    # Join favorites to recipes
+    query = (
+        db.query(Recipe)
+        .join(Favorite, Favorite.recipe_id == Recipe.id)
+        .filter(Favorite.user_id == current_user.id)
+        .order_by(Favorite.created_at.desc())
+    )
+    items = query.offset(skip).limit(limit).all()
+    return items
+
+
+@router.get(
+    "/{recipe_id}/favorites",
+    response_model=List[FavoriteRead],
+    summary="List favorites for a recipe",
+    description="Return list of Favorite records (user_id and metadata) for users who favorited the recipe.",
+    responses={
+        200: {"description": "List returned"},
+        404: {"description": "Recipe not found", "model": MessageResponse},
+    },
+)
+def list_favorites_for_recipe(
+    recipe_id: int,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """List Favorite entries for a given recipe id."""
+    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not recipe:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+    favs = db.query(Favorite).filter(Favorite.recipe_id == recipe_id).order_by(Favorite.created_at.desc()).all()
+    return favs
