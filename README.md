@@ -39,6 +39,20 @@ Alternatively:
 
 OpenAPI docs: /docs
 
+### New: Title recommendation endpoint
+- Path: POST /recommend-title
+- Body:
+  {
+    "content": "Your note content here..."
+  }
+- Returns:
+  {
+    "suggestions": ["Title A", "Title B", "Title C"]
+  }
+- Behavior:
+  - If PERPLEXITY_API_KEY is configured, titles are generated via Perplexity.
+  - If not configured or on provider error, a local heuristic suggests titles.
+
 ### New: Chatbot endpoint (Perplexity proxy)
 - Path: POST /chatbot
 - Body:
